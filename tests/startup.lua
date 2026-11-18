@@ -84,7 +84,7 @@ plugin = Plugin:new{
 }
 local items = {}
 plugin:addToMainMenu(items)
-assert(items.pocketchess.sorting_hint == "more_tools")
+assert(items.pocketchess.sorting_hint == "tools")
 items.pocketchess.callback()
 local study = assert(plugin.study)
 assert(ui.top == study)

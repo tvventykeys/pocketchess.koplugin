@@ -18,7 +18,7 @@ end
 function PocketChess:addToMainMenu(menu_items)
     menu_items.pocketchess = {
         text = _("Pocket Chess Studies"),
-        sorting_hint = "more_tools",
+        sorting_hint = "tools",
         callback = function() self:openStudies() end,
     }
 end

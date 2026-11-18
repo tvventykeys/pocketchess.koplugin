@@ -12,8 +12,8 @@ kingside and queenside castling, en passant, queen promotion and knight underpro
    `pocketchess.koplugin` folder into `.adds/koreader/plugins/`. The installed
    entry point should be `.adds/koreader/plugins/pocketchess.koplugin/main.lua`.
 3. Eject the Kobo. If KOReader is running, exit and reopen KOReader once to
-   discover the plugin. Open the main menu and choose **Tools → More tools →
-   Pocket Chess Studies**. If the entry is hidden, check **Plugin management**.
+   discover the plugin. Open the main menu and choose **Tools → Pocket Chess
+   Studies**. Look directly in the Tools tab for the launch entry.
 4. Use **Close** to return to the file browser or the book you were reading.
 
 ## Solve puzzles
@@ -95,8 +95,9 @@ return { color_rendering = true, sdl_window = { width = 1264, height = 1680 } }
 
 From the distribution directory containing `reader.lua`, run
 `SDL_VIDEODRIVER=dummy KO_HOME=/path/to/test-profile ./reader.lua /path/to/empty-directory`.
-The script drives KOReader's file-manager menu, tap and page-key dispatch,
-progress reload and screen close. It exits nonzero on failure. The Libra
+The script drives KOReader's Tools menu, tap and page-key dispatch, progress
+reload and screen close. Pass a text file instead of a directory to exercise
+the menu while reading. The script exits nonzero on failure. The Libra
 Colour's e-ink rendering and a physical Bluetooth clicker require device testing.
 
 [database]: https://database.lichess.org/#puzzles

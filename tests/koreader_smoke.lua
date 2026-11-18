@@ -6,10 +6,11 @@ local Geom = require("ui/geometry")
 local Key = require("device/key")
 local MenuSorter = require("ui/menusorter")
 local PluginLoader = require("pluginloader")
+local ReaderUI = require("apps/reader/readerui")
 local UIManager = require("ui/uimanager")
 
 local function run()
-    local manager = assert(FileManager.instance, "KOReader did not start its file manager")
+    local manager = assert(ReaderUI.instance or FileManager.instance, "KOReader did not open its main screen")
     local plugin = assert(PluginLoader:getPluginInstance("pocketchess"), "PluginLoader did not load Pocket Chess")
     local baseline = UIManager:getTopmostVisibleWidget()
 
@@ -25,8 +26,15 @@ local function run()
         local menu = manager.menu.menu_container[1]
         local items = manager.menu.menu_items
         assert(items.pocketchess and items.pocketchess.text == "Pocket Chess Studies")
-        local more = MenuSorter:findById(manager.menu.tab_item_table, "more_tools")
-        assert(MenuSorter:findById(more.sub_item_table, "pocketchess") == items.pocketchess)
+        local tools = assert(MenuSorter:findById(manager.menu.tab_item_table, "tools"))
+        local entry
+        for _, item in ipairs(tools) do
+            if item.id == "pocketchess" then entry = item end
+        end
+        assert(entry == items.pocketchess, "Pocket Chess must appear directly in Tools")
+        if os.getenv("POCKETCHESS_SMOKE_NO_MORE_TOOLS") then
+            assert(not MenuSorter:findById(tools, "more_tools"))
+        end
         menu:onMenuSelect(items.pocketchess)
         assert(UIManager:getTopmostVisibleWidget() == plugin.study, "Study should cover the main menu")
         UIManager:_repaint()
