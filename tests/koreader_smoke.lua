@@ -84,12 +84,40 @@ local function run()
     assert(brightness.ges == "swipe" and warmth.ges == "swipe")
     local mappings = manager.gestures.gestures
     local left_up = mappings.one_finger_swipe_left_edge_up
+    local right_up = mappings.one_finger_swipe_right_edge_up
     mappings.one_finger_swipe_left_edge_up = { increase_frontlight_warmth = 7 }
     edgeSwipe(2)
     assert(warmth == 7, "Study did not respect the configured left edge assignment")
+    warmth = nil
+    local start = Geom:new{ x = 2, y = 400 }
+    local ending = Geom:new{ x = 3, y = 230 }
+    UIManager:sendEvent(Event:new("Gesture", { ges = "pan", start_pos = start, pos = ending }))
+    UIManager:sendEvent(Event:new("Gesture", { ges = "pan_release", pos = ending }))
+    assert(warmth == 7, "Slow edge drag did not use the configured action")
     mappings.one_finger_swipe_left_edge_up = left_up
+    mappings.one_finger_swipe_right_edge_up = nil
+    warmth = nil
+    edgeSwipe(Device.screen:getWidth() - 2)
+    assert(warmth and warmth.ges == "swipe", "Unassigned edge did not use default warmth")
+    mappings.one_finger_swipe_right_edge_up = right_up
     listener.onIncreaseFlIntensity = increaseBrightness
     listener.onIncreaseFlWarmth = increaseWarmth
+
+    local light_button = study.buttons[4][1]
+    tap(light_button.x + 10, light_button.y + 10)
+    local controls = UIManager:getTopmostVisibleWidget()
+    assert(controls.name == "FrontLightWidget" and controls.modal and controls.has_nl)
+    UIManager:_repaint()
+    local previous_brightness, previous_warmth = controls.fl.cur, controls.nl.cur
+    local target_brightness = previous_brightness == controls.fl.max and previous_brightness - 1
+        or previous_brightness + 1
+    local target_warmth = previous_warmth == controls.nl.max and previous_warmth - 1 or previous_warmth + 1
+    controls:setBrightness(target_brightness)
+    controls:setWarmth(target_warmth, true)
+    assert(controls.powerd:frontlightIntensity() == target_brightness)
+    assert(controls.powerd:toNativeWarmth(controls.powerd:frontlightWarmth()) == target_warmth)
+    controls:onClose()
+    assert(UIManager:getTopmostVisibleWidget() == study and study.session.index == 1)
 
     local hint = study.buttons[1][1]
     tap(hint.x + 10, hint.y + 10)

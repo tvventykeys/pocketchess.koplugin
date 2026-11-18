@@ -1,5 +1,6 @@
 local Blitbuffer = require("ffi/blitbuffer")
 local Device = require("device")
+local Event = require("ui/event")
 local Font = require("ui/font")
 local GestureRange = require("ui/gesturerange")
 local ImageWidget = require("ui/widget/imagewidget")
@@ -25,7 +26,7 @@ local frontlight_events = {
     onIncreaseFlIntensity = true, onDecreaseFlIntensity = true,
     onIncreaseFlWarmth = true, onDecreaseFlWarmth = true,
     onSetFlIntensity = true, onSetFlWarmth = true,
-    onToggleFrontlight = true, onShowFlDialog = true,
+    onToggleFrontlight = true,
 }
 
 local Study = InputContainer:extend{
@@ -62,6 +63,11 @@ function Study:init()
     self:onPhysicalKeyboardConnected()
     self.ges_events.Tap = { GestureRange:new{ ges = "tap" } }
     self.images = {}
+    if Device:hasFrontlight() then
+        self.ges_events.EdgeSwipe = { GestureRange:new{ ges = "swipe" } }
+        self.ges_events.EdgePan = { GestureRange:new{ ges = "pan" } }
+        self.ges_events.EdgePanRelease = { GestureRange:new{ ges = "pan_release" } }
+    end
     -- Reuse KOReader's registered zones and their current Gesture Manager actions.
     local zones = {}
     for _, id in ipairs(edge_swipes) do
@@ -69,7 +75,10 @@ function Study:init()
         if zone then
             zones[#zones + 1] = {
                 id = id, ges = zone.def.ges, screen_zone = zone.def.screen_zone,
-                handler = zone.handler,
+                handler = function(gesture)
+                    self.edge_pan_start = nil
+                    return zone.handler(gesture)
+                end,
             }
         end
     end
@@ -231,12 +240,16 @@ function Study:paintTo(bb, x, y)
         self:buttonRow(bb, { { _("Cancel"), function() self:cancelPromotion() end } }, second_y)
         return
     end
-    self:buttonRow(bb, {
+    local actions = {
         { self.hint_used and _("Reveal") or _("Hint"),
             function() self:onHintOrReveal() end, enabled = s.step.move ~= nil },
         { _("Retry"), function() self:onRetry() end },
         { _("Refresh"), function() UIManager:setDirty(self, "full") end },
-    }, first_y)
+    }
+    if Device:hasFrontlight() then
+        actions[#actions + 1] = { _("Light"), function() self:onShowFlDialog() end }
+    end
+    self:buttonRow(bb, actions, first_y)
     self:buttonRow(bb, {
         { _("Previous"), function() self:onPrevious() end, enabled = s.index > 1 },
         { _("Next"), function() self:onNext() end, enabled = s.index < #s.collection },
@@ -323,6 +336,61 @@ function Study:onNext() return self:navigate(1) end
 function Study:onBrowse()
     self:cancelAutoAdvance()
     require("pocketchess_browse").show(self)
+end
+
+function Study:onShowFlDialog()
+    if not Device:hasFrontlight() then return end
+    local FrontLightWidget = require("ui/widget/frontlightwidget")
+    UIManager:show(FrontLightWidget:new{ modal = true })
+    return true
+end
+
+local function lightEdge(pos)
+    if not pos then return end
+    local width, height = Screen:getWidth(), Screen:getHeight()
+    for _, side in ipairs({ "LEFT", "RIGHT" }) do
+        local zone = G_defaults:readSetting("DSWIPE_ZONE_" .. side .. "_EDGE")
+        if pos.x >= width * zone.x and pos.x < width * (zone.x + zone.w)
+            and pos.y >= height * zone.y and pos.y < height * (zone.y + zone.h) then
+            return side
+        end
+    end
+end
+
+function Study:onEdgeSwipe(_arg, gesture)
+    self.edge_pan_start = nil
+    local up = gesture.direction == "north"
+    if not up and gesture.direction ~= "south" then return end
+    local edge = lightEdge(gesture.pos)
+    if edge == "LEFT" then
+        UIManager:sendEvent(Event:new(up and "IncreaseFlIntensity" or "DecreaseFlIntensity", gesture))
+        return true
+    elseif edge == "RIGHT" and Device:hasNaturalLight() then
+        UIManager:sendEvent(Event:new(up and "IncreaseFlWarmth" or "DecreaseFlWarmth", gesture))
+        return true
+    end
+end
+
+function Study:onEdgePan(_arg, gesture)
+    self.edge_pan_start = lightEdge(gesture.start_pos) and gesture.start_pos or nil
+    return true
+end
+
+function Study:onEdgePanRelease(_arg, gesture)
+    local start = self.edge_pan_start
+    self.edge_pan_start = nil
+    if start and gesture.pos then
+        local dx, dy = gesture.pos.x - start.x, gesture.pos.y - start.y
+        if math.abs(dy) >= Screen:scaleBySize(18) and math.abs(dy) > math.abs(dx) then
+            -- Slow vertical drags end as pan_release on KOReader. Route them
+            -- through the same registered edge actions as a quick swipe.
+            self:onGesture{
+                ges = "swipe", direction = dy < 0 and "north" or "south",
+                pos = start, end_pos = gesture.pos, distance = math.abs(dy), time = gesture.time,
+            }
+        end
+    end
+    return true
 end
 
 function Study:play(move)

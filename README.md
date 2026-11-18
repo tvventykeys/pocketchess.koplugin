@@ -1,4 +1,4 @@
-# Pocket Chess Studies v0.2.1
+# Pocket Chess Studies v0.2.2
 
 An offline chess tactics trainer for KOReader, sized for the Kobo Libra Colour.
 The plugin includes the original 20 puzzles and a 20,000-puzzle CC0 Lichess
@@ -7,7 +7,7 @@ kingside and queenside castling, en passant, queen promotion and knight underpro
 
 ## Install on Kobo
 
-1. Download [Pocket-Chess-Studies-v0.2.1.zip](dist/Pocket-Chess-Studies-v0.2.1.zip)
+1. Download [Pocket-Chess-Studies-v0.2.2.zip](dist/Pocket-Chess-Studies-v0.2.2.zip)
    and extract it on your computer.
 2. Connect the Kobo by USB. Show hidden folders if needed and copy the extracted
    `pocketchess.koplugin` folder into `.adds/koreader/plugins/`. The installed
@@ -44,9 +44,11 @@ move outside the recorded solution leaves the position unchanged.
   or **1400–1500**. Previous and Next stay within those results.
   Choose **Original 20 puzzles** to return to the starter pack.
 
-On the chessboard, edge swipes use your existing KOReader Gesture Manager
-assignments for brightness and warmth. The defaults on a Libra Colour are the
-left edge for brightness and the right edge for warmth.
+Tap **Light** on the chessboard to open KOReader's brightness and warmth
+controls. Closing them returns to the same puzzle. Quick swipes and slower
+vertical drags at the edges use your KOReader Gesture Manager assignments.
+When an edge swipe has no assignment, the left edge adjusts brightness and
+the right edge adjusts warmth on devices that support it.
 
 Solved marks, partial lines and the current puzzle are stored in KOReader's
 `settings/pocketchess-progress.txt`. The plugin validates the file and starts

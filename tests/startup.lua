@@ -66,16 +66,18 @@ local text = {
 local expansion = { entries = {}, close = function() end }
 local modules = {
     datastorage = { getSettingsDir = function() return test_dir end },
-    device = { screen = Screen, input = { group = {
+    device = { screen = Screen, hasFrontlight = function() return true end, input = { group = {
         PgBack = { "LPgBack", "RPgBack" }, PgFwd = { "LPgFwd", "RPgFwd" }, Back = { "Back" },
     } } },
     ["ffi/blitbuffer"] = { ColorRGB32 = function(...) return {...} end },
     gettext = function(s) return s end,
     pocketchess_expansion = { open = function() return expansion end },
+    ["ui/event"] = {},
     ["ui/font"] = { getFace = function() end },
     ["ui/gesturerange"] = { new = mkWidget },
     ["ui/uimanager"] = ui,
     ["ui/widget/container/inputcontainer"] = Container,
+    ["ui/widget/frontlightwidget"] = { new = mkWidget },
     ["ui/widget/imagewidget"] = image,
     ["ui/widget/infomessage"] = { new = mkWidget },
     ["ui/widget/textwidget"] = text,
@@ -109,7 +111,10 @@ local function tapButton(index)
     study:onTap(nil, { pos = { x = button.x + 2, y = button.y + 2 } })
 end
 
-assert(labels.Hint and labels.Refresh and not labels.Reveal)
+assert(labels.Hint and labels.Refresh and labels.Light and not labels.Reveal)
+tapButton(4)
+assert(ui.top ~= study and ui.top.modal and study.session.index == 1)
+ui.top = study
 tapButton(1)
 assert(study.hinted == "e7" and study.selected == nil)
 study:paintTo(bb, 0, 0)

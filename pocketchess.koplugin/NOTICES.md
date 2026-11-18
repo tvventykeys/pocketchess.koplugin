@@ -1,4 +1,4 @@
-# Pocket Chess Studies v0.2.1
+# Pocket Chess Studies v0.2.2
 
 The plugin source is provided under the GNU General Public License, version 2
 or later. See COPYING.
