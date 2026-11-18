@@ -43,6 +43,11 @@ class PuzzleTests(unittest.TestCase):
                     move = moves[ply]
                     self.assertEqual(game.step.fen, board.fen())
                     self.assertEqual(set(game.step.legal.split()), {m.uci() for m in board.legal_moves})
+                    for square in board.piece_map():
+                        source = chess.square_name(square)
+                        destinations = {chess.square_name(m.to_square)
+                                        for m in board.legal_moves if m.from_square == square}
+                        self.assertEqual(set(game.legalDestinations(game, source).keys()), destinations)
                     self.assertEqual(game.hint(game), chess.square_name(move.from_square))
                     if board.is_en_passant(move):
                         features.add("en passant")
@@ -65,6 +70,7 @@ class PuzzleTests(unittest.TestCase):
                     self.assertEqual(dict(game.pieces.items()), pieces)
                     self.assertEqual(game.side, "w" if board.turn else "b")
                 self.assertTrue(game.solved)
+                self.assertEqual(list(game.legalDestinations(game, "a1").keys()), [])
                 self.assertEqual(game.play(game, moves[-1].uci()), "finished")
         self.assertEqual(features, {
             "en passant", "kingside castling", "queenside castling", "promotion", "underpromotion",

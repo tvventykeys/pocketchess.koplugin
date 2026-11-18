@@ -123,6 +123,8 @@ end
 function Study:paintBoard(bb)
     local board, cell, gutter = self.board, self.cell, self.gutter
     local use_color = Screen:isColorEnabled()
+    local destinations = self.session:legalDestinations(self.selected)
+    local dot_radius = math.max(2, math.floor(cell / 14))
     for row = 1, 8 do
         for col = 1, 8 do
             local square = self:square(col, row)
@@ -138,6 +140,11 @@ function Study:paintBoard(bb)
                 local icon = self:pieceImage(piece)
                 local inset = math.floor((cell - icon:getSize().w) / 2)
                 icon:paintTo(bb, x + inset, y + inset)
+            end
+            if destinations[square] then
+                local offset = piece and 2 * dot_radius or math.floor(cell / 2)
+                bb:paintCircle(x + offset, y + offset, dot_radius, WHITE)
+                bb:paintCircle(x + offset, y + offset, math.max(1, dot_radius - 2), BLACK)
             end
             if square == self.selected or square == self.hinted then
                 local t = math.max(2, math.floor(cell / 18))
@@ -200,9 +207,10 @@ function Study:paintTo(bb, x, y)
         return
     end
     self:buttonRow(bb, {
-        { _("Hint"), function() self:onHint() end, enabled = s.step.move ~= nil },
+        { self.hint_used and _("Reveal") or _("Hint"),
+            function() self:onHintOrReveal() end, enabled = s.step.move ~= nil },
         { _("Retry"), function() self:onRetry() end },
-        { _("Reveal"), function() self:onReveal() end, enabled = s.step.move ~= nil },
+        { _("Refresh"), function() UIManager:setDirty(self, "full") end },
     }, first_y)
     self:buttonRow(bb, {
         { _("Previous"), function() self:onPrevious() end, enabled = s.index > 1 },
@@ -228,15 +236,18 @@ function Study:clearSelection()
     self.selected, self.hinted, self.promotion, self.message = nil, nil, nil, nil
 end
 
-function Study:onHint()
+function Study:onHintOrReveal()
+    if self.hint_used then return self:onReveal() end
     self:clearSelection()
     self.hinted = self.session:hint()
+    self.hint_used = self.hinted ~= nil
     self:redraw()
 end
 
 function Study:onRetry()
     self.session:retry()
     self:clearSelection()
+    self.hint_used = nil
     self:save()
     self:redraw()
 end
@@ -245,6 +256,7 @@ function Study:onReveal()
     local line = self.session:reveal()
     if not line then return end
     self:clearSelection()
+    self.hint_used = nil
     self:save()
     self:redraw()
     UIManager:show(InfoMessage:new{ text = _("Solution") .. "\n\n" .. line })
@@ -253,6 +265,7 @@ end
 function Study:navigate(offset)
     if not self.promotion and self.session:navigate(offset) then
         self:clearSelection()
+        self.hint_used = nil
         self:save()
         self:redraw()
     end
@@ -266,6 +279,7 @@ function Study:play(move)
     local result, san, reply = self.session:play(move)
     self:clearSelection()
     if result == "correct" then
+        self.hint_used = nil
         self.message = reply and string.format(_("Correct: %s  ·  Reply: %s"), san, reply)
             or string.format(_("Correct: %s"), san)
         self:save()

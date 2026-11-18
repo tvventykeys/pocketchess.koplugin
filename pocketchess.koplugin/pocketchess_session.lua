@@ -69,6 +69,18 @@ function Session:owns(square)
     return piece and (piece == piece:upper()) == (self.side == "w")
 end
 
+function Session:legalDestinations(from)
+    local destinations = {}
+    if from and self.step.legal then
+        for move in self.step.legal:gmatch("%S+") do
+            if move:sub(1, 2) == from then
+                destinations[move:sub(3, 4)] = true
+            end
+        end
+    end
+    return destinations
+end
+
 function Session:promotions(from, to)
     local choices = {}
     if self.step.legal then

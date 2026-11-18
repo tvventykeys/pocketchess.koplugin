@@ -18,16 +18,20 @@ kingside and queenside castling, en passant, queen promotion and knight underpro
 
 ## Solve puzzles
 
-The solver's pieces start at the bottom. Tap one of your pieces, then tap its
-destination. For castling, tap the king and then its destination two files away.
+The solver's pieces start at the bottom. Tap one of your pieces to see dots on
+its legal destinations, including dots in the corner of squares you can
+capture. Then tap the destination. For castling, tap the king and then its
+destination two files away.
 Promotion opens a choice of queen, rook, bishop or knight. When you find a
 solution move, the plugin plays the opponent's reply automatically. A legal
 move outside the recorded solution leaves the position unchanged.
 
-- **Hint** outlines the moving piece without showing its destination.
+- **Hint** outlines the moving piece, then becomes **Reveal** for that turn.
+  Tap **Reveal** to see the remaining line and final position. An unsolved
+  puzzle stays unsolved when revealed.
 - **Retry** returns to the starting position and keeps any previously earned solved mark.
-- **Reveal** shows the remaining line in chess notation and the final position.
-  An unsolved puzzle stays unsolved when revealed.
+- **Refresh** flashes the full screen to clear e-ink ghosting while preserving
+  the current position and selection.
 - **Previous** and **Next** also respond to KOReader's normal page keys and
   Left/Right key events while the puzzle view is open. A Bluetooth page-turner
   can use mappings that already deliver these events to KOReader.

@@ -26,6 +26,8 @@ local Screen = {
     scaleBySize = function(_, px) return math.floor(px * 2.1) end,
 }
 local bb = { paintRect = function() end, paintBorder = function() end }
+local dots = {}
+function bb:paintCircle(x, y) dots[x .. "," .. y] = true end
 local painted = 0
 function bb:paintRectRGB32() painted = painted + 1 end
 local ui = {}
@@ -36,7 +38,9 @@ function ui:close(widget)
     widget:onCloseWidget()
     self.top = nil
 end
-function ui:setDirty() end
+function ui:setDirty(widget, mode, region)
+    self.refresh = { widget, mode, region }
+end
 
 local function mkWidget(class, data)
     data = data or {}
@@ -90,8 +94,16 @@ study:paintTo(bb, 0, 0)
 assert(painted == 64 and labels["White to move"] and study.cell >= 130)
 assert(study:square(1, 1) == "a8")
 assert(study.controls.y + study.controls.h * 2 <= 1680)
-study:onHint()
+local function tapButton(index)
+    local button = study.buttons[index][1]
+    study:onTap(nil, { pos = { x = button.x + 2, y = button.y + 2 } })
+end
+
+assert(labels.Hint and labels.Refresh and not labels.Reveal)
+tapButton(1)
 assert(study.hinted == "e7" and study.selected == nil)
+study:paintTo(bb, 0, 0)
+assert(labels.Reveal and not next(dots))
 
 local function tapSquare(square)
     for row = 1, 8 do
@@ -109,8 +121,20 @@ local function tapSquare(square)
 end
 
 tapSquare("e7")
+study:paintTo(bb, 0, 0)
+local board, cell = study.board, study.cell
+local function hasDot(file, rank, offset)
+    offset = offset or math.floor(cell / 2)
+    return dots[(board.x + (file - 1) * cell + offset) .. "," ..
+        (board.y + (8 - rank) * cell + offset)]
+end
+assert(hasDot(5, 8) and hasDot(7, 7, 2 * math.floor(cell / 14)))
+assert(not hasDot(5, 6) and study.hint_used)
+tapButton(3)
+assert(ui.refresh[1] == study and ui.refresh[2] == "full" and ui.refresh[3] == nil)
+assert(study.selected == "e7" and study.hint_used and study.session.stage == 1)
 tapSquare("e8")
-assert(study.session.solved)
+assert(study.session.solved and not study.hint_used)
 assert(study:onKeyPress("RPgFwd") and study.session.index == 2)
 assert(study:onKeyPress("RPgBack") and study.session.index == 1)
 assert(study:onKeyPress("Back") and not ui.top and not plugin.study)
@@ -119,6 +143,16 @@ items.pocketchess.callback()
 study = assert(plugin.study)
 assert(study.session.solved)
 study:onNext()
+study:paintTo(bb, 0, 0)
+tapButton(1)
+tapSquare("e2")
+tapSquare("e3")
+assert(study.hint_used and not study.session.solved)
+study:paintTo(bb, 0, 0)
+tapButton(1)
+assert(study.session.revealed and not study.session.solved and not study.hint_used)
+assert(ui.top.text:find("Re8#", 1, true))
+ui.top = study
 study:onNext()
 study:paintTo(bb, 0, 0)
 assert(labels["Black to move"] and study:square(1, 1) == "h1")
