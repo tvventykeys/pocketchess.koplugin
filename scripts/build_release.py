@@ -5,14 +5,14 @@ from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 ROOT = Path(__file__).resolve().parents[1]
 PLUGIN = ROOT / "pocketchess.koplugin"
-OUTPUT = ROOT / "dist" / "Pocket-Chess-Studies-v0.1.zip"
+OUTPUT = ROOT / "dist" / "Pocket-Chess-Studies-v0.2.zip"
 
 
 def build(output):
     files = sorted(
         list(PLUGIN.glob("*.lua"))
         + list((PLUGIN / "pieces").glob("*.svg"))
-        + [PLUGIN / "COPYING", PLUGIN / "NOTICES.md"]
+        + [PLUGIN / "COPYING", PLUGIN / "NOTICES.md", PLUGIN / "lichess-expansion.sqlite3"]
     )
     output.parent.mkdir(parents=True, exist_ok=True)
     with ZipFile(output, "w", compression=ZIP_DEFLATED, compresslevel=9) as archive:

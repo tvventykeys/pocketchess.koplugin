@@ -55,6 +55,7 @@ local text = {
     new = mkWidget, getSize = function() return { w = 10, h = 10 } end,
     paintTo = function(self) labels[self.text] = true end, free = function() end,
 }
+local expansion = { entries = {}, close = function() end }
 local modules = {
     datastorage = { getSettingsDir = function() return test_dir end },
     device = { screen = Screen, input = { group = {
@@ -62,6 +63,7 @@ local modules = {
     } } },
     ["ffi/blitbuffer"] = { ColorRGB32 = function(...) return {...} end },
     gettext = function(s) return s end,
+    pocketchess_expansion = { open = function() return expansion end },
     ["ui/font"] = { getFace = function() end },
     ["ui/gesturerange"] = { new = mkWidget },
     ["ui/uimanager"] = ui,
@@ -175,3 +177,6 @@ study:paintTo(bb, 0, 0)
 assert(study.landscape and study.controls.y + study.controls.h * 2 <= 1264)
 plugin:onCloseWidget()
 assert(not ui.top and not plugin.study)
+modules.pocketchess_expansion.open = function() return nil end
+items.pocketchess.callback()
+assert(not plugin.study and ui.top.text:find("Could not open the puzzle pack", 1, true))

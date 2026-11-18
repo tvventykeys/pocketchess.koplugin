@@ -2,17 +2,42 @@
 local Session = {}
 Session.__index = Session
 
-function Session.new(puzzles, progress)
-    local self = setmetatable({ puzzles = puzzles, progress = progress, index = 1 }, Session)
-    for index, item in ipairs(puzzles) do
-        if item.id == progress.current then self.index = index end
+function Session.new(puzzles, progress, expansion)
+    local self = setmetatable({ puzzles = puzzles, progress = progress, expansion = expansion }, Session)
+    local current_is_expansion = false
+    for _, puzzle in ipairs(puzzles) do
+        if puzzle.id == progress.current then
+            current_is_expansion = not puzzle.steps
+            break
+        end
     end
-    self:loadPuzzle()
+    self:selectCollection(current_is_expansion)
     return self
 end
 
+function Session:selectCollection(use_expansion, theme, min_rating, max_rating)
+    local matching, current_index = {}, 1
+    for _, item in ipairs(self.puzzles) do
+        if (not item.steps) == use_expansion
+            and (not theme or item.themes:find(" " .. theme .. " ", 1, true))
+            and (not min_rating or item.rating >= min_rating and item.rating <= max_rating) then
+            matching[#matching + 1] = item
+            if item.id == self.progress.current then current_index = #matching end
+        end
+    end
+    if #matching == 0 then return false end
+    self.collection = matching
+    self.index = current_index
+    self:loadPuzzle()
+    return true
+end
+
 function Session:loadPuzzle()
-    self.puzzle = self.puzzles[self.index]
+    local entry = self.collection[self.index]
+    self.puzzle = entry
+    if not entry.steps then
+        self.puzzle = { id = entry.id, rating = entry.rating, steps = self.expansion:loadSteps(entry.id) }
+    end
     self.progress.current = self.puzzle.id
     local saved = self.progress.entries[self.puzzle.id]
     self.stage = saved and saved.stage or 1
@@ -47,7 +72,7 @@ end
 
 function Session:navigate(offset)
     local index = self.index + offset
-    if index < 1 or index > #self.puzzles then return false end
+    if index < 1 or index > #self.collection then return false end
     self.index = index
     self:loadPuzzle()
     return true

@@ -50,7 +50,7 @@ local function run()
     end
 
     local study = open()
-    assert(#study.session.puzzles == 20 and study.cell >= 100)
+    assert(#study.session.puzzles == 20020 and #study.session.collection == 20 and study.cell >= 100)
     assert(Device.screen:isColorEnabled())
     local board = study.board
     local light = Device.screen.bb:getPixel(board.x + 2, board.y + 2)
@@ -58,6 +58,38 @@ local function run()
     assert(light:getR() > dark:getR() and dark:getR() > dark:getG())
     local capture = os.getenv("POCKETCHESS_SMOKE_PNG")
     if capture then Device.screen.bb:writePNG(capture) end
+
+    local brightness, warmth
+    local listener = manager.devicelistener
+    local increaseBrightness = listener.onIncreaseFlIntensity
+    local increaseWarmth = listener.onIncreaseFlWarmth
+    listener.onIncreaseFlIntensity = function(self, gesture)
+        brightness = gesture
+        return increaseBrightness(self, gesture)
+    end
+    listener.onIncreaseFlWarmth = function(self, gesture)
+        warmth = gesture
+        return increaseWarmth(self, gesture)
+    end
+    local function edgeSwipe(x)
+        UIManager:sendEvent(Event:new("Gesture", {
+            ges = "swipe", direction = "north", distance = 160,
+            pos = Geom:new{ x = x, y = math.floor(Device.screen:getHeight() / 2) },
+        }))
+    end
+    edgeSwipe(Device.screen:getWidth() / 2)
+    assert(not brightness and not warmth)
+    edgeSwipe(2)
+    edgeSwipe(Device.screen:getWidth() - 2)
+    assert(brightness.ges == "swipe" and warmth.ges == "swipe")
+    local mappings = manager.gestures.gestures
+    local left_up = mappings.one_finger_swipe_left_edge_up
+    mappings.one_finger_swipe_left_edge_up = { increase_frontlight_warmth = 7 }
+    edgeSwipe(2)
+    assert(warmth == 7, "Study did not respect the configured left edge assignment")
+    mappings.one_finger_swipe_left_edge_up = left_up
+    listener.onIncreaseFlIntensity = increaseBrightness
+    listener.onIncreaseFlWarmth = increaseWarmth
 
     local hint = study.buttons[1][1]
     tap(hint.x + 10, hint.y + 10)
@@ -87,6 +119,31 @@ local function run()
     checkClosed(study)
     study = open()
     assert(study.session.solved and study.session.index == 1, "Solved progress did not reload")
+    local browse = study.buttons[#study.buttons - 1][1]
+    tap(browse.x + 10, browse.y + 10)
+    local themes = UIManager:getTopmostVisibleWidget()
+    themes.buttons[3][1].callback() -- Fork
+    local ratings = UIManager:getTopmostVisibleWidget()
+    ratings.buttons[3][1].callback() -- 1200–1399
+    local pack = study.session
+    assert(#pack.collection > 1 and #pack.collection < 20000)
+    for _, entry in ipairs(pack.collection) do
+        assert(entry.themes:find(" fork ", 1, true) and entry.rating >= 1200 and entry.rating <= 1399)
+        assert(not entry.steps, "Puzzle positions should be read as needed")
+    end
+    local first_id = pack.puzzle.id
+    press("RPgFwd")
+    assert(pack.puzzle.id ~= first_id and pack.index == 2 and pack.step.move)
+    local resumed_id = pack.puzzle.id
+    study:play(pack.step.move)
+    assert(pack.stage == 2)
+    study:onClose()
+    study = open()
+    assert(study.session.puzzle.id == resumed_id and study.session.stage == 2)
+    study:onBrowse()
+    UIManager:getTopmostVisibleWidget().buttons[1][1].callback()
+    assert(study.session.index == 1 and study.session.solved and #study.session.collection == 20)
+    UIManager:_repaint()
     local close = study.buttons[#study.buttons][1]
     tap(close.x + 10, close.y + 10)
     checkClosed(study)

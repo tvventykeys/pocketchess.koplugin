@@ -1,5 +1,7 @@
 import csv
+import json
 from pathlib import Path
+import sqlite3
 import tempfile
 import unittest
 from zipfile import ZipFile
@@ -81,6 +83,36 @@ class PuzzleTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "illegal move"):
             build_puzzles.compile_puzzle(row)
 
+    def test_expansion_contents_and_replay(self):
+        path = build_release.PLUGIN / "lichess-expansion.sqlite3"
+        with sqlite3.connect(f"{path.as_uri()}?mode=ro", uri=True) as db:
+            self.assertEqual(db.execute("PRAGMA integrity_check").fetchone()[0], "ok")
+            self.assertEqual(db.execute("PRAGMA user_version").fetchone()[0], 1)
+            self.assertEqual(db.execute("SELECT COUNT(*), COUNT(DISTINCT id) FROM puzzles").fetchone(),
+                             (20_000, 20_000))
+            for theme in ("mate", "fork", "pin", "endgame", "middlegame"):
+                for low, high in ((80, 1199), (1200, 1399), (1400, 1500)):
+                    self.assertIsNotNone(db.execute(
+                        "SELECT 1 FROM puzzles WHERE instr(themes, ?) > 0 AND rating BETWEEN ? AND ? LIMIT 1",
+                        (f" {theme} ", low, high),
+                    ).fetchone())
+            for puzzle, rating, count, raw in db.execute(
+                "SELECT id, rating, stage_count, steps FROM puzzles ORDER BY position"
+            ):
+                self.assertTrue(80 <= rating <= 1500, puzzle)
+                steps = json.loads(raw)
+                self.assertEqual(len(steps), count, puzzle)
+                for step, following in zip(steps, steps[1:]):
+                    board = chess.Board(step["fen"])
+                    move = chess.Move.from_uci(step["move"])
+                    self.assertEqual(set(step["legal"].split()), {m.uci() for m in board.legal_moves}, puzzle)
+                    self.assertIn(move, board.legal_moves, puzzle)
+                    self.assertEqual(board.san(move), step["san"], puzzle)
+                    board.push(move)
+                    if reply := step.get("reply"):
+                        board.push_san(reply)
+                    self.assertEqual(board.fen(), following["fen"], puzzle)
+
 
 class LuaTests(unittest.TestCase):
     def run_lua(self, name):
@@ -109,7 +141,8 @@ class ReleaseTests(unittest.TestCase):
         with ZipFile(committed) as archive:
             self.assertIsNone(archive.testzip())
             expected = {"main.lua", "_meta.lua", "pocketchess_progress.lua", "pocketchess_puzzles.lua",
-                        "pocketchess_session.lua", "pocketchess_study.lua", "COPYING", "NOTICES.md"}
+                        "pocketchess_session.lua", "pocketchess_study.lua", "pocketchess_browse.lua",
+                        "pocketchess_expansion.lua", "lichess-expansion.sqlite3", "COPYING", "NOTICES.md"}
             expected.update(f"pieces/{color}{piece}.svg" for color in "bw" for piece in "KQRBNP")
             self.assertEqual(set(archive.namelist()), {f"pocketchess.koplugin/{name}" for name in expected})
 

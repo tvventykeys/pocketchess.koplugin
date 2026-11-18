@@ -15,6 +15,18 @@ local BLACK, WHITE = Blitbuffer.COLOR_BLACK, Blitbuffer.COLOR_WHITE
 local light = Blitbuffer.ColorRGB32(239, 211, 173, 255)
 local dark = Blitbuffer.ColorRGB32(157, 103, 67, 255)
 local promotion_names = { q = _("Queen"), r = _("Rook"), b = _("Bishop"), n = _("Knight") }
+local edge_swipes = {
+    "one_finger_swipe_left_edge_up",
+    "one_finger_swipe_left_edge_down",
+    "one_finger_swipe_right_edge_up",
+    "one_finger_swipe_right_edge_down",
+}
+local frontlight_events = {
+    onIncreaseFlIntensity = true, onDecreaseFlIntensity = true,
+    onIncreaseFlWarmth = true, onDecreaseFlWarmth = true,
+    onSetFlIntensity = true, onSetFlWarmth = true,
+    onToggleFrontlight = true, onShowFlDialog = true,
+}
 
 local Study = InputContainer:extend{
     modal = true,
@@ -50,6 +62,18 @@ function Study:init()
     self:onPhysicalKeyboardConnected()
     self.ges_events.Tap = { GestureRange:new{ ges = "tap" } }
     self.images = {}
+    -- Reuse KOReader's registered zones and their current Gesture Manager actions.
+    local zones = {}
+    for _, id in ipairs(edge_swipes) do
+        local zone = self.host._zones and self.host._zones[id]
+        if zone then
+            zones[#zones + 1] = {
+                id = id, ges = zone.def.ges, screen_zone = zone.def.screen_zone,
+                handler = zone.handler,
+            }
+        end
+    end
+    if #zones > 0 then self:registerTouchZones(zones) end
 end
 
 function Study:onPhysicalKeyboardConnected()
@@ -70,6 +94,7 @@ function Study:layout(w, h)
     if self.width == w and self.height == h then return end
     self.width, self.height = w, h
     self:freePieces()
+    if self.touch_zone_dg then self:updateTouchZonesOnScreenResize{ w = w, h = h } end
 
     local margin = Screen:scaleBySize(12)
     local line = Screen:scaleBySize(29)
@@ -189,7 +214,7 @@ function Study:paintTo(bb, x, y)
     text(bb, self.title, _("Pocket Chess Studies"), 25, BLACK, true)
     text(bb, self.turn, turn, 22, BLACK, true)
     text(bb, self.counter, string.format(_("Puzzle %d of %d  ·  Rating %d%s"),
-        s.index, #s.puzzles, s.puzzle.rating, s.solved and _("  ·  Solved") or ""), 16)
+        s.index, #s.collection, s.puzzle.rating, s.solved and _("  ·  Solved") or ""), 16)
     local status = self.save_failed and _("Could not save progress.")
         or self.message or _("Tap a piece, then its destination.")
     text(bb, self.status, status, 16)
@@ -214,7 +239,8 @@ function Study:paintTo(bb, x, y)
     }, first_y)
     self:buttonRow(bb, {
         { _("Previous"), function() self:onPrevious() end, enabled = s.index > 1 },
-        { _("Next"), function() self:onNext() end, enabled = s.index < #s.puzzles },
+        { _("Next"), function() self:onNext() end, enabled = s.index < #s.collection },
+        { _("Browse"), function() self:onBrowse() end },
         { _("Close"), function() self:onClose() end },
     }, second_y)
 end
@@ -274,6 +300,10 @@ end
 
 function Study:onPrevious() return self:navigate(-1) end
 function Study:onNext() return self:navigate(1) end
+
+function Study:onBrowse()
+    require("pocketchess_browse").show(self)
+end
 
 function Study:play(move)
     local result, san, reply = self.session:play(move)
@@ -337,6 +367,16 @@ end
 
 function Study:onKeyRepeat() return true end
 function Study:onHome() return self:onClose() end
+
+function Study:handleEvent(event)
+    -- The reader underneath this modal isn't a recipient for Dispatcher events.
+    local listener = self.host.devicelistener
+    if listener and frontlight_events[event.handler] then
+        listener:handleEvent(event)
+        return true
+    end
+    return InputContainer.handleEvent(self, event)
+end
 
 function Study:onClose()
     UIManager:close(self, "full")

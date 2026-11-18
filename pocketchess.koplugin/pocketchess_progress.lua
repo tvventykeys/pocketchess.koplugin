@@ -16,7 +16,9 @@ function Progress.load(path, puzzles)
     if #data > limit or data:sub(-1) ~= "\n" then return empty(puzzles), true end
 
     local allowed = {}
-    for _, puzzle in ipairs(puzzles) do allowed[puzzle.id] = #puzzle.steps end
+    for _, puzzle in ipairs(puzzles) do
+        allowed[puzzle.id] = puzzle.stage_count or #puzzle.steps
+    end
     local header, current, rows = data:match("^([^\n]+)\n([^\n]+)\n(.*)$")
     if header ~= HEADER or not current:match("^[A-Za-z0-9]+$") then
         return empty(puzzles), true
