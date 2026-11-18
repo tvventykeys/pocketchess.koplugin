@@ -245,8 +245,25 @@ function Study:paintTo(bb, x, y)
     }, second_y)
 end
 
-function Study:redraw()
-    UIManager:setDirty(self, "ui")
+function Study:redraw(mode)
+    UIManager:setDirty(self, mode or "ui")
+end
+
+function Study:cancelAutoAdvance()
+    if self.auto_advance then
+        UIManager:unschedule(self.auto_advance)
+        self.auto_advance = nil
+    end
+end
+
+function Study:scheduleAutoAdvance()
+    local function advance()
+        if self.auto_advance ~= advance then return end
+        self.auto_advance = nil
+        self:navigate(1)
+    end
+    self.auto_advance = advance
+    UIManager:scheduleIn(2, advance)
 end
 
 function Study:save()
@@ -271,11 +288,12 @@ function Study:onHintOrReveal()
 end
 
 function Study:onRetry()
+    self:cancelAutoAdvance()
     self.session:retry()
     self:clearSelection()
     self.hint_used = nil
     self:save()
-    self:redraw()
+    self:redraw("full")
 end
 
 function Study:onReveal()
@@ -289,11 +307,12 @@ function Study:onReveal()
 end
 
 function Study:navigate(offset)
+    self:cancelAutoAdvance()
     if not self.promotion and self.session:navigate(offset) then
         self:clearSelection()
         self.hint_used = nil
         self:save()
-        self:redraw()
+        self:redraw("full")
     end
     return true
 end
@@ -302,6 +321,7 @@ function Study:onPrevious() return self:navigate(-1) end
 function Study:onNext() return self:navigate(1) end
 
 function Study:onBrowse()
+    self:cancelAutoAdvance()
     require("pocketchess_browse").show(self)
 end
 
@@ -313,6 +333,9 @@ function Study:play(move)
         self.message = reply and string.format(_("Correct: %s  ·  Reply: %s"), san, reply)
             or string.format(_("Correct: %s"), san)
         self:save()
+        if not self.session.step.move and self.session.index < #self.session.collection then
+            self:scheduleAutoAdvance()
+        end
     elseif result == "incorrect" then
         self.message = _("Try another move.")
     elseif result == "illegal" then
@@ -384,6 +407,7 @@ function Study:onClose()
 end
 
 function Study:onCloseWidget()
+    self:cancelAutoAdvance()
     self:freePieces()
     self.closed()
 end

@@ -112,7 +112,8 @@ local function run()
     assert(study.session.solved)
 
     press("RPgFwd")
-    assert(study.session.index == 2)
+    assert(study.session.index == 2 and study.auto_advance == nil)
+    assert(UIManager._refresh_stack[1].mode == "full")
     press("LPgBack")
     assert(study.session.index == 1)
     press(Device.input.group.Back[1])
@@ -147,14 +148,35 @@ local function run()
     local close = study.buttons[#study.buttons][1]
     tap(close.x + 10, close.y + 10)
     checkClosed(study)
+    study = open()
+    study:onRetry()
+    study:play(study.session.step.move)
+    assert(study.session.index == 1 and study.session.solved and study.auto_advance)
+    local setDirty = UIManager.setDirty
+    local refreshed
+    UIManager.setDirty = function(self, widget, mode, region, ...)
+        if widget == study and mode == "full" and region == nil then refreshed = true end
+        return setDirty(self, widget, mode, region, ...)
+    end
+    return function()
+        UIManager.setDirty = setDirty
+        assert(study.session.index == 2 and refreshed, "Auto-advance did not load and refresh the next puzzle")
+        study:onClose()
+        checkClosed(study)
+    end
 end
 
-UIManager:scheduleIn(0.1, function()
-    local ok, err = xpcall(run, debug.traceback)
+local function finish(ok, err)
     if ok then
         print("Pocket Chess KOReader smoke passed")
     else
         io.stderr:write(err, "\n")
     end
     UIManager:quit(ok and 0 or 1)
+end
+
+UIManager:scheduleIn(0.1, function()
+    local ok, verify = xpcall(run, debug.traceback)
+    if not ok then return finish(false, verify) end
+    UIManager:scheduleIn(2.2, function() finish(xpcall(verify, debug.traceback)) end)
 end)

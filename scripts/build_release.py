@@ -5,7 +5,7 @@ from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 ROOT = Path(__file__).resolve().parents[1]
 PLUGIN = ROOT / "pocketchess.koplugin"
-OUTPUT = ROOT / "dist" / "Pocket-Chess-Studies-v0.2.zip"
+OUTPUT = ROOT / "dist" / "Pocket-Chess-Studies-v0.2.1.zip"
 
 
 def build(output):

@@ -27,7 +27,7 @@ function Browse.show(study)
         study:clearSelection()
         study.hint_used = nil
         study:save()
-        study:redraw()
+        study:redraw("full")
     end
 
     local function chooseRating(theme)

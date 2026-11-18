@@ -1,4 +1,4 @@
-# Pocket Chess Studies v0.2
+# Pocket Chess Studies v0.2.1
 
 An offline chess tactics trainer for KOReader, sized for the Kobo Libra Colour.
 The plugin includes the original 20 puzzles and a 20,000-puzzle CC0 Lichess
@@ -7,7 +7,7 @@ kingside and queenside castling, en passant, queen promotion and knight underpro
 
 ## Install on Kobo
 
-1. Download [Pocket-Chess-Studies-v0.2.zip](dist/Pocket-Chess-Studies-v0.2.zip)
+1. Download [Pocket-Chess-Studies-v0.2.1.zip](dist/Pocket-Chess-Studies-v0.2.1.zip)
    and extract it on your computer.
 2. Connect the Kobo by USB. Show hidden folders if needed and copy the extracted
    `pocketchess.koplugin` folder into `.adds/koreader/plugins/`. The installed
@@ -33,6 +33,8 @@ move outside the recorded solution leaves the position unchanged.
 - **Retry** returns to the starting position and keeps any previously earned solved mark.
 - **Refresh** flashes the full screen to clear e-ink ghosting while preserving
   the current position and selection.
+- Solving a puzzle advances to the next one in the current selection after
+  two seconds. Each puzzle loads with a full-screen refresh.
 - **Previous** and **Next** also respond to KOReader's normal page keys and
   Left/Right key events while the puzzle view is open. A Bluetooth page-turner
   can use mappings that already deliver these events to KOReader.

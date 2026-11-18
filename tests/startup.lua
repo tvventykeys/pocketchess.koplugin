@@ -41,6 +41,14 @@ end
 function ui:setDirty(widget, mode, region)
     self.refresh = { widget, mode, region }
 end
+function ui:scheduleIn(delay, callback)
+    assert(not self.pending)
+    self.pending, self.delay = callback, delay
+end
+function ui:unschedule(callback)
+    assert(self.pending == callback)
+    self.pending = nil
+end
 
 local function mkWidget(class, data)
     data = data or {}
@@ -137,13 +145,26 @@ assert(ui.refresh[1] == study and ui.refresh[2] == "full" and ui.refresh[3] == n
 assert(study.selected == "e7" and study.hint_used and study.session.stage == 1)
 tapSquare("e8")
 assert(study.session.solved and not study.hint_used)
+assert(ui.pending and ui.delay == 2 and study.session.index == 1)
+local canceled = ui.pending
 assert(study:onKeyPress("RPgFwd") and study.session.index == 2)
+assert(not ui.pending and ui.refresh[2] == "full")
+canceled()
+assert(study.session.index == 2)
 assert(study:onKeyPress("RPgBack") and study.session.index == 1)
 assert(study:onKeyPress("Back") and not ui.top and not plugin.study)
 
 items.pocketchess.callback()
 study = assert(plugin.study)
 assert(study.session.solved)
+study:onRetry()
+assert(ui.refresh[2] == "full")
+study:play(study.session.step.move)
+local advance = assert(ui.pending)
+ui.pending = nil
+advance()
+assert(study.session.index == 2 and ui.refresh[2] == "full")
+study:onPrevious()
 study:onNext()
 study:paintTo(bb, 0, 0)
 tapButton(1)
@@ -153,6 +174,7 @@ assert(study.hint_used and not study.session.solved)
 study:paintTo(bb, 0, 0)
 tapButton(1)
 assert(study.session.revealed and not study.session.solved and not study.hint_used)
+assert(not ui.pending)
 assert(ui.top.text:find("Re8#", 1, true))
 ui.top = study
 study:onNext()
